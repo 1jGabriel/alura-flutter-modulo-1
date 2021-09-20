@@ -11,10 +11,10 @@ class ByteBankApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        home: Scaffold(
-      body: TransferForm(),
-    ));
+    return MaterialApp(initialRoute: '/', routes: {
+      '/': (context) => TransferList(),
+      '/create-transfer': (context) => TransferForm()
+    });
   }
 }
 
@@ -30,50 +30,74 @@ class TransferForm extends StatelessWidget {
         appBar: AppBar(title: const Text("Transfer Form")),
         body: Column(
           children: [
-            Padding(
-              padding: EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _accountNumberController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(
-                  fontSize: 24.0,
-                ),
-                decoration: InputDecoration(
-                    labelText: 'Número da conta', hintText: '0000'),
-              ),
+            Editor(
+              controller: _accountNumberController,
+              label: 'Número da conta',
+              hint: '0000',
             ),
-            Padding(
-              padding: EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(
-                  fontSize: 24.0,
-                ),
-                decoration: InputDecoration(
-                    icon: Icon(Icons.monetization_on),
-                    labelText: 'Valor',
-                    hintText: '0.00'),
-              ),
+            Editor(
+              controller: _amountController,
+              label: 'Valor',
+              hint: '0.00',
+              icon: Icons.monetization_on,
             ),
             ElevatedButton(
                 onPressed: () {
-                  final amount = double.tryParse(_amountController.text);
-                  final accountNumber = _accountNumberController.text;
-                  if (amount != null) {
-                    final transferPojo = TransferPojo(amount, accountNumber);
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text('$transferPojo')));
-                  }
+                  createTransfer(context);
                 },
                 child: const Text('Criar transferencia'))
           ],
         ));
   }
+
+  void createTransfer(BuildContext context) {
+    final amount = double.tryParse(_amountController.text);
+    final accountNumber = _accountNumberController.text;
+    if (amount != null) {
+      final transferPojo = TransferPojo(amount, accountNumber);
+      Navigator.pop(context, transferPojo);
+      debugPrint('$transferPojo');
+    }
+  }
+}
+
+class Editor extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData? icon;
+
+  Editor({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(16.0),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: TextStyle(
+          fontSize: 24.0,
+        ),
+        decoration: InputDecoration(
+          icon: icon != null ? Icon(icon) : null,
+          labelText: label,
+          hintText: hint,
+        ),
+      ),
+    );
+  }
 }
 
 class TransferList extends StatelessWidget {
-  const TransferList({
+  final List<TransferPojo?> _transfers = [];
+
+  TransferList({
     Key? key,
   }) : super(key: key);
 
@@ -85,15 +109,27 @@ class TransferList extends StatelessWidget {
           'Transferências',
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          TransferItem(TransferPojo(2.0, '123')),
-          TransferItem(TransferPojo(3.0, '123')),
-        ],
+      body: ListView.builder(
+        itemCount: _transfers.length,
+        itemBuilder: (context, index) {
+          final item = _transfers[index];
+          if (item != null) {
+            debugPrint('$item');
+            return TransferItem(item);
+          } else {
+            return Spacer();
+          }
+        },
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () => debugPrint("abc"),
+        onPressed: () {
+          final Future future = Navigator.pushNamed(
+            context,
+            '/create-transfer'
+          );
+          future.then((transferCreated) => {_transfers.add(transferCreated)});
+        },
       ),
     );
   }
